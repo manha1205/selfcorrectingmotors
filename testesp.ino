@@ -7,7 +7,7 @@ MPU6500 IMU;
 calData calibration = {0};
 AccelData accelData;
 GyroData gyroData;
-float Ax, Ay, Az, Gx;
+float Ax, Ay, Az, Gy;
 float previousangle;
 float Accelangle;
 
@@ -36,8 +36,8 @@ float input;
 float pidout;
 
 float kp = 1.0;
-float ki = 0.0;
-float kd = 0.0;
+float ki = 0.25;
+float kd = 0.25;
 
 void setup() {
   Serial.begin(115200);
@@ -63,6 +63,7 @@ void setup() {
  ReadIMU();
   previousTime = micros();
   myController.setTunings(kp, ki, kd);
+  myController.setOutputLimits(-128, 128);
   motor1.stop();
   motor2.stop();
 }
@@ -80,8 +81,8 @@ void loop() {
  
     ReadIMU();
     
-  float gyrorate = Gx; 
-    Accelangle = CalculateAccelAngle(Ay, Az);
+  float gyrorate = Gy; 
+    Accelangle = CalculateAccelAngle(Ax, Az);
 
     if (FirstTime){
        previousangle = Accelangle;
@@ -106,7 +107,7 @@ void ReadIMU(){
    Ay = accelData.accelY;
    Az = accelData.accelZ;
 
-   Gx= gyroData.gyroX;
+   Gy= gyroData.gyroY;
 
   
 }
