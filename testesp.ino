@@ -22,13 +22,15 @@ unsigned long currentTime;
 float dt;
 
 //pins for motor driver
-const int ENA;
-const int IN1;
-const int IN2;
-const int ENB;
-const int IN3;
-const int IN4;
+const int ENA =0;
+const int IN1 = 1;
+const int IN2 = 2;
+const int ENB = 3;
+const int IN3 = 4;
+const int IN4= 5;
 
+L298N motor1(ENA, IN1, IN2);
+L298N motor2(ENB, IN3, IN4);
 
 float input;
 float pidout;
@@ -61,15 +63,12 @@ void setup() {
  ReadIMU();
   previousTime = micros();
   myController.setTunings(kp, ki, kd);
-  pinMode(ENA, OUTPUT);
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
-
-  pinMode(ENB, OUTPUT);
-  pinMode(IN3, OUTPUT);
-  pinMode(IN4, OUTPUT);
-  
+  motor1.stop();
+  motor2.stop();
 }
+
+
+
 void loop() {
   // put your main code here,to run repeatedly:
   //time
@@ -94,9 +93,7 @@ void loop() {
     input = currentangle;
     pidout = myController.compute(input);
     myController.debug();
-    // MotorControl(pidout);
-
-    
+    MotorControl(pidout);
 }
 
 void ReadIMU(){
@@ -116,21 +113,23 @@ void ReadIMU(){
 float CalculateAccelAngle(float ay, float az){
     return atan2(ay,az) * 180.0 /PI;
 }
-
 void MotorControl(float output){
   float motorSpeed = abs(output);
+  motor1.setSpeed(motorSpeed);
+  motor2.setSpeed(motorSpeed);
 
   if( output > 0){
-      // Motor A
-        digitalWrite(IN1, HIGH);
-        digitalWrite(IN2, LOW);
-
-        // Motor B: 
-        digitalWrite(IN3, LOW);
-        digitalWrite(IN4, HIGH);
+     motor1.forward();
+     motor2.forward();
   }
-  else if (outout < 0){
-    
+  else if (output < 0){
+    motor1.backward();
+    motor2.backward();
   }
+  else{
+    motor1.stop();
+    motor2.stop();
+  }
+  
 
 }
