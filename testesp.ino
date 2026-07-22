@@ -1,22 +1,33 @@
+#include "FastIMU.h"
 #include <Wire.h>
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
 #include "ArduPID.h"
+#include <L298N.h>
 
-
-Adafruit_MPU6050 mpu;
-float Ax, Ay, Az;
-float Gx, Gy, Gz;
+MPU6500 IMU;
+calData calibration = {0};
+AccelData accelData;
+GyroData gyroData;
+float Ax, Ay, Az, Gx;
 float previousangle;
 float Accelangle;
+
 
 bool FirstTime = true;
 ArduPID myController;
 float setpoint = 0.0;
 
+//current angle calculation requires slices of time.
 unsigned long previousTime;
 unsigned long currentTime;
 float dt;
+
+//pins for motor driver
+const int ENA;
+const int IN1;
+const int IN2;
+const int ENB;
+const int IN3;
+const int IN4;
 
 
 float input;
@@ -27,23 +38,38 @@ float ki = 0.0;
 float kd = 0.0;
 
 void setup() {
-  // put your setup code here, to run once:
-    Serial.begin(115200);
-    Wire.begin(21, 22);
-    previousTime = micros();
-    myController.setTunings(kp, ki, kd);
+  Serial.begin(115200);
+  delay(10000);
 
-     if (!mpu.begin()) {
-    Serial.println("Failed to find MPU6050 chip");
+  Serial.println("ESP32 started");
+  Wire.begin(21, 22);
+  Serial.println("Wire started");
+
+  int err = IMU.init(calibration);
+
+  if (err!=0){
+    Serial.println("IMU initialization failed");
+    Serial.println(err);
     while (1) {
-      delay(10);
-    }
-  }
-  Serial.println("MPU6050 Found!");
-
-
+    delay(10000);
 }
+  }
+ else{
+  Serial.println("IMU initialization worked");
 
+ }
+ ReadIMU();
+  previousTime = micros();
+  myController.setTunings(kp, ki, kd);
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+
+  pinMode(ENB, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  
+}
 void loop() {
   // put your main code here,to run repeatedly:
   //time
@@ -52,41 +78,59 @@ void loop() {
   previousTime = currentTime;
   
   float currentangle;
-  float gyrorate = Gx;
+ 
     ReadIMU();
+    
+  float gyrorate = Gx; 
     Accelangle = CalculateAccelAngle(Ay, Az);
+
     if (FirstTime){
        previousangle = Accelangle;
       FirstTime = false;
     }
     currentangle = 0.02*Accelangle + 0.98 * (previousangle + gyrorate *dt);
+  
     previousangle = currentangle;
     input = currentangle;
     pidout = myController.compute(input);
     myController.debug();
+    // MotorControl(pidout);
 
     
 }
 
 void ReadIMU(){
-  sensors_event_t a, g, temp; 
-  mpu.getEvent(&a, &g, &temp);
+  IMU.update();
+  IMU.getAccel(&accelData);
+  IMU.getGyro(&gyroData);
 
-   Ax = a.acceleration.x;
-   Ay = a.acceleration.y;
-   Az = a.acceleration.z;
 
-   Gx= g.gyro.x;
-  // Serial.print("Acceleration X: ");
-  // Serial.print(Ax);
-  // Serial.print(", Y: ");
-  // Serial.print(Ay);
-  // Serial.print(", Z: ");
-  // Serial.print(Az);
-  // Serial.print("Rate x: ");
-  // Serial.print(g.gyro.x); //only for debugging
+   Ax = accelData.accelX;
+   Ay = accelData.accelY;
+   Az = accelData.accelZ;
+
+   Gx= gyroData.gyroX;
+
+  
 }
 float CalculateAccelAngle(float ay, float az){
-    return atan2(ay,az);
+    return atan2(ay,az) * 180.0 /PI;
 }
 
+void MotorControl(float output){
+  float motorSpeed = abs(output);
+
+  if( output > 0){
+      // Motor A
+        digitalWrite(IN1, HIGH);
+        digitalWrite(IN2, LOW);
+
+        // Motor B: 
+        digitalWrite(IN3, LOW);
+        digitalWrite(IN4, HIGH);
+  }
+  else if (outout < 0){
+    
+  }
+
+}
