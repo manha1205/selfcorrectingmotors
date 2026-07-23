@@ -6,7 +6,7 @@
 #include <string.h>
 
 MPU6500 IMU;
-BluetoothSerial bluetooth;
+// BluetoothSerial bluetooth;
 calData calibration = {0};
 AccelData accelData;
 GyroData gyroData;
@@ -62,12 +62,11 @@ void setup() {
  else{
   Serial.println("IMU initialization worked");
  }
- bluetooth.begin("BalanceBot");
  ReadIMU();
   previousTime = micros();
   myController.setTunings(kp, ki, kd);
   myController.setOutputLimits(-128, 128);
-  motor1.stop();
+  motor1.stop();  
   motor2.stop();
 }
 
@@ -138,9 +137,10 @@ void MotorControl(float output){
   }
 }
 void updatePIDConstants(){
-    if (!bluetooth.available()) return;
+    if (!Serial.available()) return;
 
-    String command = bluetooth.readString();  
+    String command = Serial.readStringUntil('\n');
+    command.trim();
         if (command.startsWith("KP:")) {
 
             kp = command.substring(3).toFloat();
@@ -149,11 +149,21 @@ void updatePIDConstants(){
         else if (command.startsWith("KI:")){
           ki = command.substring(3).toFloat();
         }
-        else if (command.startsWith("Kd:")){
+        else if (command.startsWith("KD:")){
           kd = command.substring(3).toFloat();
         }
        else{
-          bluetooth.println("Invalid command.");
+          Serial.println("Invalid command.");
     }
     myController.setTunings(kp, ki, kd);
+    Serial.print("PID constants updated: ");
+    Serial.print("KP: ");
+    Serial.print(kp);
+    Serial.print('\n');
+    Serial.print("KI: ");
+    Serial.print(ki);
+    Serial.print('\n');
+    Serial.print("KD: ");
+    Serial.print(kd );
+    Serial.print('\n');
     }
