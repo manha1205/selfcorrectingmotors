@@ -2,8 +2,11 @@
 #include <Wire.h>
 #include "ArduPID.h"
 #include <L298N.h>
+#include <BluetoothSerial.h>
+#include <string.h>
 
 MPU6500 IMU;
+BluetoothSerial bluetooth;
 calData calibration = {0};
 AccelData accelData;
 GyroData gyroData;
@@ -22,12 +25,12 @@ unsigned long currentTime;
 float dt;
 
 //pins for motor driver
-const int ENA =0;
-const int IN1 = 1;
-const int IN2 = 2;
-const int ENB = 3;
-const int IN3 = 4;
-const int IN4= 5;
+const int ENA =19;
+const int IN1 = 18;
+const int IN2 = 17;
+const int ENB = 35;
+const int IN3 = 32;
+const int IN4= 34;
 
 L298N motor1(ENA, IN1, IN2);
 L298N motor2(ENB, IN3, IN4);
@@ -58,8 +61,8 @@ void setup() {
   }
  else{
   Serial.println("IMU initialization worked");
-
  }
+ bluetooth.begin("BalanceBot");
  ReadIMU();
   previousTime = micros();
   myController.setTunings(kp, ki, kd);
@@ -75,6 +78,9 @@ void loop() {
   //time
   currentTime = micros();
   dt= (currentTime-previousTime)/1000000.0;
+  if (dt<=0 || dt> 0.1){
+    
+  }
   previousTime = currentTime;
   
   float currentangle;
@@ -130,6 +136,24 @@ void MotorControl(float output){
     motor1.stop();
     motor2.stop();
   }
-  
-
 }
+void updatePIDConstants(){
+    if (!bluetooth.available()) return;
+
+    String command = bluetooth.readString();  
+        if (command.startsWith("KP:")) {
+
+            kp = command.substring(3).toFloat();
+
+        }
+        else if (command.startsWith("KI:")){
+          ki = command.substring(3).toFloat();
+        }
+        else if (command.startsWith("Kd:")){
+          kd = command.substring(3).toFloat();
+        }
+       else{
+          bluetooth.println("Invalid command.");
+    }
+    myController.setTunings(kp, ki, kd);
+    }
