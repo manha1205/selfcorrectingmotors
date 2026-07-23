@@ -98,6 +98,7 @@ void loop() {
     previousangle = currentangle;
     input = currentangle;
     pidout = myController.compute(input);
+    updatePIDConstants();
     MotorControl(pidout);
 }
 
